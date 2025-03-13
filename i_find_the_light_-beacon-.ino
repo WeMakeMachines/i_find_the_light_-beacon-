@@ -1,14 +1,15 @@
+#include "i_find_the_light-beacon-.h"
+#include "http.h"
 #include "wifi_config.h" // Make sure this has been configured!
 
 #include <Wire.h>
 #include <WiFi.h>
-#include <HTTPClient.h>
 #include <esp_wifi.h>
 
 #include <ArduinoJson.h>
 #include <Adafruit_VEML7700.h>
-#include <OneWire.h>
 #include <DallasTemperature.h>
+#include <OneWire.h>
 #include <RTClib.h>
 
 // unique device reference
@@ -22,26 +23,19 @@ const char* api_POST_readings = "http://192.168.50.1:3111/readings";
 // node_id, timestamp, poll_interval
 StaticJsonDocument<200> config;
 
-enum Unit {
-  Metric = 1,
-  Imperial = 2
-};
+// DS1307 RTC
+RTC_DS1307 rtc;
+
+// DS18B20 temperature sensor - this is a 3 pin temperature sensor, mounted upside-down - you can only see the 3 solder blobs from the top of the PCB
+const int oneWireBus = 4;  // GPIO pin for DS18B20 data line
+OneWire oneWire(oneWireBus);
+Adafruit_VEML7700 veml = Adafruit_VEML7700();
+DallasTemperature sensors(&oneWire);
 
 int poll_interval;
 int rtc_calibrate_timestamp;
 int node_id;
 enum Unit unit;
-
-// VEML7700 LUX sensor (the rectangular blue module with the rectangle diamond-looking bit)
-Adafruit_VEML7700 veml = Adafruit_VEML7700();
-
-// DS18B20 temperature sensor - this is a 3 pin temperature sensor, mounted upside-down - you can only see the 3 solder blobs from the top of the PCB
-const int oneWireBus = 4;  // GPIO pin for DS18B20 data line
-OneWire oneWire(oneWireBus);
-DallasTemperature sensors(&oneWire);
-
-// DS1307 RTC - The Real Time Clock module, this needs a CR2032 battery (coin-cell) installed to keeep the time.
-RTC_DS1307 rtc;
 
 // Variables to store sensor data
 float lux = 0.0;
@@ -53,32 +47,10 @@ int getTimestamp() {
   return timestamp;
 }
 
-String httpPOSTRequest(const char* url, String json) {
-  HTTPClient http;
-  String jsonResponse = "{}";
-
-  http.begin(url);
-  http.addHeader("Content-Type", "application/json");
-  int httpResponseCode = http.POST(json);
-
-  if (httpResponseCode>0) {
-    Serial.print("HTTP Response code: ");
-    Serial.println(httpResponseCode);
-    jsonResponse = http.getString();
-  }
-  else {
-    Serial.print("Error code: ");
-    Serial.println(httpResponseCode);
-  }
-  http.end();
-
-  return jsonResponse;
-}
-
-// Function to poll data from sensors
-void pollSensors(Unit unit) {
+SensorData pollSensors(Unit unit) {
   int DS18B20_index = 0;
-  lux = veml.readLux();
+  float temperature;
+  float lux = veml.readLux();
   sensors.requestTemperatures();
 
   switch (unit) {
@@ -88,6 +60,8 @@ void pollSensors(Unit unit) {
     default:
       temperature = sensors.getTempCByIndex(DS18B20_index);
   }
+
+  return { temperature, lux };
 }
 
 void setup() {
