@@ -1,22 +1,19 @@
+#include "wifi_config.h" // Make sure this has been configured!
+
+#include <Wire.h>
+#include <WiFi.h>
 #include <HTTPClient.h>
-#include <ArduinoJson.h>
 #include <esp_wifi.h>
 
-//These ones you'll need to add via Tools - Manage Libraries
-#include <Adafruit_VEML7700.h> //"Adafruit VEML7700 Library" by Adafruit
-#include <OneWire.h> //"OneWire" by Jim Studt, Tom Pollard
-#include <DallasTemperature.h> //"DallasTemperature" by Miles Burton
-#include <RTClib.h> //"RTClib" by Adafruit
-//These are built in
-#include <Wire.h> //built into the Arduino core
-#include <WiFi.h> //built into the Arduino core
+#include <ArduinoJson.h>
+#include <Adafruit_VEML7700.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <RTClib.h>
 
 // unique device reference
 String name = "0001";
 
-// Raspberry Pi Wi-Fi Hotspot credentials
-const char* wifi_ssid = "iftl";
-const char* wifi_password = "iftl4321";
 // API endpoints
 const char* api_POST_handshake = "http://192.168.50.1:3111/handshake";
 const char* api_POST_readings = "http://192.168.50.1:3111/readings";
@@ -96,7 +93,7 @@ void pollSensors(Unit unit) {
 void setup() {
   Serial.begin(115200);
   // Connect to Wi-Fi
-  WiFi.begin(wifi_ssid, wifi_password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -154,7 +151,7 @@ void setup() {
 
 void loop() {
   esp_wifi_start();
-  WiFi.begin(wifi_ssid, wifi_password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
