@@ -1,3 +1,4 @@
+#include "unit.h"
 #include "i_find_the_light-beacon-.h"
 #include "http.h"
 #include "wifi_config.h" // Make sure this has been configured!
@@ -6,7 +7,7 @@
 #include <WiFi.h>
 #include <esp_wifi.h>
 
-#include <ArduinoJson.h>
+#include <ArduinoJson.h>  
 #include <Adafruit_VEML7700.h>
 #include <DallasTemperature.h>
 #include <OneWire.h>
@@ -20,7 +21,7 @@ const char* api_POST_handshake = "http://192.168.50.1:3111/handshake";
 const char* api_POST_readings = "http://192.168.50.1:3111/readings";
 
 // device config
-// node_id, timestamp, poll_interval
+// beacon_id, timestamp, poll_interval, unit
 StaticJsonDocument<200> config;
 
 // DS1307 RTC
@@ -34,7 +35,7 @@ DallasTemperature sensors(&oneWire);
 
 int poll_interval;
 int rtc_calibrate_timestamp;
-int node_id;
+int beacon_id;
 enum Unit unit;
 
 // Variables to store sensor data
@@ -92,9 +93,10 @@ void setup() {
       return;
   }
 
-  node_id = config["node_id"];
+  beacon_id = config["beacon_id"];
   poll_interval = config["poll_interval"];
   rtc_calibrate_timestamp = config["timestamp"];
+  unit = validateUnit(config["unit"]);
 
   // Initialise I2C for VEML7700 and DS1307
   Wire.begin(32, 25);
@@ -135,7 +137,7 @@ void loop() {
   pollSensors(unit);
 
   StaticJsonDocument<200> reading;
-  reading["node_id"] = node_id;
+  reading["beacon_id"] = beacon_id;
   reading["lux"] = lux;
   reading["temperature"] = temperature;
   reading["timestamp"] = getTimestamp();
