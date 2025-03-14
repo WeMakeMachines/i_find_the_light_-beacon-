@@ -1,5 +1,6 @@
 #include "unit.h"
 #include "i_find_the_light-beacon-.h"
+#include "esp32_rtc.h"
 #include "station_api.h"
 #include "wifi_config.h" // Make sure this has been configured!
 
@@ -23,11 +24,6 @@ const int oneWireBus = 4; // GPIO pin for DS18B20 data line
 OneWire oneWire(oneWireBus);
 Adafruit_VEML7700 veml = Adafruit_VEML7700();
 DallasTemperature sensors(&oneWire);
-
-int poll_interval;
-uint64_t rtc_calibrate_timestamp;
-int beacon_id;
-enum Unit unit;
 
 uint64_t getTimestampInMilliseconds()
 {
@@ -70,10 +66,11 @@ void setup()
 
   HandshakeConfig config = httpRequestHandshake(name);
 
-  poll_interval = config.poll_interval;
-  rtc_calibrate_timestamp = config.rtc_calibration;
-  beacon_id = config.beacon_id;
-  unit = config.unit;
+  setRtcDataAttr({config.beacon_id,
+                  config.poll_interval,
+                  config.schedule_start,
+                  config.schedule_end,
+                  config.unit});
 
   // Initialise I2C for VEML7700 and DS1307
   Wire.begin(32, 25);
@@ -95,7 +92,7 @@ void setup()
   }
 
   // adjust RTC with calibration timestamp from station
-  uint32_t timestamp_seconds = static_cast<uint32_t>(rtc_calibrate_timestamp / 1000);
+  uint32_t timestamp_seconds = static_cast<uint32_t>(config.rtc_calibration / 1000);
   DateTime dt(timestamp_seconds);
   rtc.adjust(dt);
 
@@ -115,14 +112,14 @@ void loop()
     Serial.print(".");
   }
 
-  SensorData data = pollSensors(unit);
+  SensorData data = pollSensors(getUnit());
 
   httpRequestReadings({
-    beacon_id : beacon_id,
+    beacon_id : getBeaconId(),
     lux : data.lux,
     temperature : data.temperature,
     timestamp : getTimestampInMilliseconds(),
-    unit : unit
+    unit : getUnit()
   });
 
   // Optionally, log data to the serial monitor for debugging
@@ -132,7 +129,7 @@ void loop()
   Serial.print(data.temperature);
   Serial.println(" °C");
 
-  esp_sleep_enable_timer_wakeup(poll_interval * 1000000); // light sleep for 2 seconds
+  esp_sleep_enable_timer_wakeup(getPollInterval() * 1000000); // light sleep for 2 seconds
   esp_wifi_stop();
   esp_light_sleep_start();
 }
