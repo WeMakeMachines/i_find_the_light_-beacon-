@@ -1,28 +1,19 @@
 #include "unit.h"
 #include "i_find_the_light-beacon-.h"
-#include "http.h"
+#include "station_api.h"
 #include "wifi_config.h" // Make sure this has been configured!
 
 #include <Wire.h>
 #include <WiFi.h>
 #include <esp_wifi.h>
 
-#include <ArduinoJson.h>  
 #include <Adafruit_VEML7700.h>
 #include <DallasTemperature.h>
 #include <OneWire.h>
 #include <RTClib.h>
 
 // unique device reference
-String name = "0001";
-
-// API endpoints
-const char* api_POST_handshake = "http://192.168.50.1:3111/handshake";
-const char* api_POST_readings = "http://192.168.50.1:3111/readings";
-
-// device config
-// beacon_id, timestamp, poll_interval, unit
-StaticJsonDocument<200> config;
+const char* name = "0001";
 
 // DS1307 RTC
 RTC_DS1307 rtc;
@@ -34,18 +25,13 @@ Adafruit_VEML7700 veml = Adafruit_VEML7700();
 DallasTemperature sensors(&oneWire);
 
 int poll_interval;
-int rtc_calibrate_timestamp;
+uint64_t rtc_calibrate_timestamp;
 int beacon_id;
 enum Unit unit;
 
-// Variables to store sensor data
-float lux = 0.0;
-float temperature = 0.0;
-
-int getTimestamp() {
+uint64_t getTimestampInMilliseconds() {
   DateTime now = rtc.now();
-  int timestamp = now.second();
-  return timestamp;
+  return static_cast<uint64_t>(now.unixtime()) * 1000ULL;
 }
 
 SensorData pollSensors(Unit unit) {
@@ -74,29 +60,15 @@ void setup() {
     delay(1000);
     Serial.print(".");
   }
-  Serial.println();
   Serial.print("Connected to WiFi. IP address: ");
   Serial.println(WiFi.localIP());
 
-  StaticJsonDocument<200> handshakePayload;
-  handshakePayload["name"] = name;
-  String payload;
-  serializeJson(handshakePayload, payload);
-  String response = httpPOSTRequest(api_POST_handshake, payload);
-  Serial.println(response);
+  HandshakeConfig config = httpRequestHandshake(name);
 
-  // Parse JSON response
-  DeserializationError error = deserializeJson(config, response);
-  if (error) {
-      Serial.print("JSON parsing failed: ");
-      Serial.println(error.f_str());
-      return;
-  }
-
-  beacon_id = config["beacon_id"];
-  poll_interval = config["poll_interval"];
-  rtc_calibrate_timestamp = config["timestamp"];
-  unit = validateUnit(config["unit"]);
+  poll_interval = config.poll_interval;
+  rtc_calibrate_timestamp = config.rtc_calibration;
+  beacon_id = config.beacon_id;
+  unit = config.unit;
 
   // Initialise I2C for VEML7700 and DS1307
   Wire.begin(32, 25);
@@ -113,12 +85,10 @@ void setup() {
     while (1);
   }
 
-  if (!rtc.isrunning()) {
-    Serial.println("RTC is not running! Setting time to default.");
-
-    DateTime dt(rtc_calibrate_timestamp);
-    rtc.adjust(dt);
-  }
+  // adjust RTC with calibration timestamp from station
+  uint32_t timestamp_seconds = static_cast<uint32_t>(rtc_calibrate_timestamp / 1000);
+  DateTime dt(timestamp_seconds);
+  rtc.adjust(dt);
 
   // Initialise DS18B20 sensor
   sensors.begin();
@@ -134,26 +104,21 @@ void loop() {
     Serial.print(".");
   }
 
-  pollSensors(unit);
+  SensorData data = pollSensors(unit);
 
-  StaticJsonDocument<200> reading;
-  reading["beacon_id"] = beacon_id;
-  reading["lux"] = lux;
-  reading["temperature"] = temperature;
-  reading["timestamp"] = getTimestamp();
-
-  // Convert JSON to a string
-  String payload;
-  serializeJson(reading, payload);
-  String response = httpPOSTRequest(api_POST_readings, payload);
-
-  Serial.println(response);
+  httpRequestReadings({
+    beacon_id: beacon_id,
+    lux: data.lux,
+    temperature: data.temperature,
+    timestamp: getTimestampInMilliseconds(),
+    unit: unit
+  });
 
   // Optionally, log data to the serial monitor for debugging
   Serial.print("Ambient Light: ");
-  Serial.print(lux);
+  Serial.print(data.lux);
   Serial.print(" lux, Temperature: ");
-  Serial.print(temperature);
+  Serial.print(data.temperature);
   Serial.println(" °C");
 
   esp_sleep_enable_timer_wakeup(poll_interval * 1000000); //light sleep for 2 seconds
