@@ -7,7 +7,8 @@
 #include "unit.h"
 #include <cstdint>
 
-struct HandshakeConfig {
+struct HandshakeConfig
+{
   int beacon_id;
   uint64_t rtc_calibration;
   int poll_interval;
@@ -16,7 +17,8 @@ struct HandshakeConfig {
   Unit unit;
 };
 
-struct Reading {
+struct Reading
+{
   int beacon_id;
   float lux;
   float temperature;
@@ -24,7 +26,7 @@ struct Reading {
   Unit unit;
 };
 
-HandshakeConfig httpRequestHandshake(const char* name);
+HandshakeConfig httpRequestHandshake(const char *name);
 
 void httpRequestReadings(Reading reading);
 

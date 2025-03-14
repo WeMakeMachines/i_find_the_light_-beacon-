@@ -1,7 +1,8 @@
 #ifndef IFTL_H
 #define IFTL_H
 
-struct SensorData {
+struct SensorData
+{
   float temperature;
   float lux;
 };

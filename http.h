@@ -3,6 +3,6 @@
 
 #include <Arduino.h>
 
-String httpPOSTRequest(const char* url, String json);
+String httpPOSTRequest(const char *url, String json);
 
 #endif

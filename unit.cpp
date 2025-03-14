@@ -1,13 +1,18 @@
 #include "unit.h"
 
-bool isValidUnit(int unit) {
+bool isValidUnit(int unit)
+{
   return (unit == Metric || unit == Imperial);
 }
 
-Unit validateUnit(int unit) {
-  if (isValidUnit(unit)) {
+Unit validateUnit(int unit)
+{
+  if (isValidUnit(unit))
+  {
     return static_cast<Unit>(unit);
-  } else {
+  }
+  else
+  {
     return Unit::Metric;
   }
 }

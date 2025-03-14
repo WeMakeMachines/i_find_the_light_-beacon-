@@ -1,7 +1,8 @@
 #ifndef UNIT_H
 #define UNIT_H
 
-enum Unit {
+enum Unit
+{
   Metric = 1,
   Imperial = 2
 };
