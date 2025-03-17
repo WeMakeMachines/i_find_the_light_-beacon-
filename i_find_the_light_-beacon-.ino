@@ -4,6 +4,7 @@
 #include "esp32_rtc.h"
 #include "sensors.h"
 #include "station_api.h"
+#include "rtc_DS1307.h"
 #include "wifi_config.h" // Make sure this has been configured!
 
 #include <Wire.h>
@@ -12,13 +13,8 @@
 #include <esp_wifi.h>
 #include <stdexcept>
 
-#include <RTClib.h>
-
 // this device unique reference
 const char *name = "0001"; // Must be unique for each beacon!
-
-// DS1307 RTC
-RTC_DS1307 rtc;
 
 int retryDelay = 5000;
 int retryCount = 0;
@@ -28,21 +24,6 @@ bool isFirstBoot()
   esp_reset_reason_t resetReason = esp_reset_reason();
 
   return (resetReason == ESP_RST_POWERON);
-}
-
-uint32_t getCurrentUnixTimeInSeconds()
-{
-  DateTime now = rtc.now();
-  return now.unixtime();
-}
-
-uint32_t calcTimeDelta(uint32_t time_in, uint32_t time_out)
-{
-  if (time_out < time_in)
-  {
-    return 0;
-  }
-  return time_out - time_in;
 }
 
 void attemptHandshake()
@@ -59,9 +40,7 @@ void attemptHandshake()
                     config.unit});
 
     // adjust RTC with calibration timestamp from station
-    uint32_t timestamp_seconds = config.rtc_calibration;
-    DateTime dt(timestamp_seconds);
-    rtc.adjust(dt);
+    calibrateRtc(config.rtc_calibration);
   }
   catch (const StationAPI_ConnectionError &e)
   {
@@ -108,7 +87,7 @@ void setup()
   Serial.print("Beacon ID: ");
   Serial.println(getBeaconId());
 
-  if (!rtc.begin())
+  if (!initRtc())
   {
     Serial.println("Couldn't find RTC!");
     while (1)
