@@ -6,6 +6,24 @@
 
 #include "unit.h"
 #include <cstdint>
+#include <string>
+
+class StationAPI_ConnectionError : public std::exception
+{
+private:
+  // Default error message
+  std::string message;
+
+public:
+  // Default constructor with a pre-defined message
+  StationAPI_ConnectionError() : message("Unable to reach API") {}
+
+  // Override the `what()` method to return the default message
+  const char *what() const noexcept override
+  {
+    return message.c_str();
+  }
+};
 
 struct HandshakeConfig
 {

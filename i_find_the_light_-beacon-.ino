@@ -10,6 +10,7 @@
 #include <WiFi.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
+#include <stdexcept>
 
 #include <RTClib.h>
 
@@ -32,12 +33,40 @@ uint64_t getTimestampInMilliseconds()
   return static_cast<uint64_t>(now.unixtime()) * 1000ULL;
 }
 
+void attemptHandshake()
+{
+  try
+  {
+    Serial.println("Handshaking with station...");
+    HandshakeConfig config = httpRequestHandshake(name);
+
+    setRtcDataAttr({config.beacon_id,
+                    config.poll_interval,
+                    config.schedule_start,
+                    config.schedule_end,
+                    config.unit});
+
+    // adjust RTC with calibration timestamp from station
+    uint32_t timestamp_seconds = static_cast<uint32_t>(config.rtc_calibration / 1000);
+    DateTime dt(timestamp_seconds);
+    rtc.adjust(dt);
+  }
+  catch (const StationAPI_ConnectionError &e)
+  {
+    Serial.println(e.what());
+    Serial.println("Will try again in 5s...");
+    // wait before attempting handshake again
+    delay(5000);
+    attemptHandshake();
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
   if (isFirstBoot())
   {
-    Serial.println("First time?!");
+    Serial.println("First time?");
     unsetRtcDataAttr();
   }
   // Wire.begin(SDA, SCL)
@@ -66,23 +95,8 @@ void setup()
   // check if config has already been set
   if (getBeaconId() == UNSET_BEACON_ID)
   {
-    Serial.println("Beacon ID not set. Handshaking with station...");
-
-    HandshakeConfig config = httpRequestHandshake(name);
-
-    setRtcDataAttr({config.beacon_id,
-                    config.poll_interval,
-                    config.schedule_start,
-                    config.schedule_end,
-                    config.unit});
-
-    Serial.print("Beacon ID after config: ");
-    Serial.println(getBeaconId());
-
-    // adjust RTC with calibration timestamp from station
-    uint32_t timestamp_seconds = static_cast<uint32_t>(config.rtc_calibration / 1000);
-    DateTime dt(timestamp_seconds);
-    rtc.adjust(dt);
+    Serial.println("Beacon ID not set.");
+    attemptHandshake();
   }
 
   initLightSensor();
@@ -102,25 +116,33 @@ void loop()
 
   SensorData data = pollSensors(getUnit());
 
-  httpRequestReadings({
-    beacon_id : getBeaconId(),
-    lux : data.lux,
-    temperature : data.temperature,
-    timestamp : getTimestampInMilliseconds(),
-    unit : getUnit()
-  });
+  try
+  {
+    httpRequestReadings({
+      beacon_id : getBeaconId(),
+      lux : data.lux,
+      temperature : data.temperature,
+      timestamp : getTimestampInMilliseconds(),
+      unit : getUnit()
+    });
 
-  Serial.print("Lux: ");
-  Serial.println(data.lux);
-  Serial.print("Temperature: ");
-  Serial.print(data.temperature);
-  if (getUnit() == Unit::Metric)
-  {
-    Serial.println(" °C");
+    Serial.print("Lux: ");
+    Serial.println(data.lux);
+    Serial.print("Temperature: ");
+    Serial.print(data.temperature);
+    if (getUnit() == Unit::Metric)
+    {
+      Serial.println(" °C");
+    }
+    else
+    {
+      Serial.println(" °F");
+    }
   }
-  else
+  catch (const StationAPI_ConnectionError &e)
   {
-    Serial.println(" °F");
+    Serial.println("Could not upload data to server.");
+    Serial.println(e.what());
   }
 
   esp_sleep_enable_timer_wakeup(getPollInterval() * uS_TO_S_FACTOR);

@@ -2,6 +2,7 @@
 #include "http.h"
 
 #include <ArduinoJson.h>
+#include <stdexcept>
 
 HandshakeConfig httpRequestHandshake(const char *name)
 {
@@ -12,13 +13,18 @@ HandshakeConfig httpRequestHandshake(const char *name)
   jsonPayload["name"] = name;
   String payloadAsString;
   serializeJson(jsonPayload, payloadAsString);
-  String response = httpPOSTRequest(POST_HANDSHAKE_URL, payloadAsString);
+  HttpResponse response = httpPOSTRequest(POST_HANDSHAKE_URL, payloadAsString);
+
+  if (response.httpResponseCode == -1)
+  {
+    throw StationAPI_ConnectionError();
+  }
 
   Serial.println("Received config from station");
-  Serial.println(response);
+  Serial.println(response.json);
 
   // Parse JSON response
-  DeserializationError error = deserializeJson(jsonResponse, response);
+  DeserializationError error = deserializeJson(jsonResponse, response.json);
   if (error)
   {
     Serial.print("JSON parsing failed: ");
@@ -46,5 +52,5 @@ void httpRequestReadings(Reading reading)
 
   String payloadAsString;
   serializeJson(payload, payloadAsString);
-  String response = httpPOSTRequest(POST_READINGS_URL, payloadAsString);
+  HttpResponse response = httpPOSTRequest(POST_READINGS_URL, payloadAsString);
 }

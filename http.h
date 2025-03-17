@@ -3,6 +3,12 @@
 
 #include <Arduino.h>
 
-String httpPOSTRequest(const char *url, String json);
+struct HttpResponse
+{
+    int httpResponseCode;
+    String json;
+};
+
+HttpResponse httpPOSTRequest(const char *url, String json);
 
 #endif
