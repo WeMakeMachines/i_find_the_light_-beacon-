@@ -2,5 +2,10 @@
 #define IFTL_H
 
 #define uS_TO_S_FACTOR 1000000
+#define I2C_SDA 32
+#define I2C_SCL 25
+#define SERIAL_BAUD 115200
+#define WIFI_RETRY_DELAY 1000
+#define API_HANDSHAKE_RETRY_DELAY 60000
 
 #endif

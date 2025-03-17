@@ -15,7 +15,7 @@
 #include <RTClib.h>
 
 // this device unique reference
-const char *name = "0001"; // Must be unique for each beacon
+const char *name = "0001"; // Must be unique for each beacon!
 
 // DS1307 RTC
 RTC_DS1307 rtc;
@@ -78,7 +78,7 @@ void attemptHandshake()
     // after some attemps, increase delay
     if (retryCount > 10)
     {
-      retryDelay = 60000;
+      retryDelay = API_HANDSHAKE_RETRY_DELAY;
     }
     delay(retryDelay);
     attemptHandshake();
@@ -87,20 +87,19 @@ void attemptHandshake()
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(SERIAL_BAUD);
   if (isFirstBoot())
   {
     Serial.println("First time?");
     unsetRtcDataAttr();
   }
-  // Wire.begin(SDA, SCL)
-  Wire.begin(32, 25);
+  Wire.begin(I2C_SDA, I2C_SCL);
   // Connect to Wi-Fi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(1000);
+    delay(WIFI_RETRY_DELAY);
     Serial.print(".");
   }
   Serial.print("Connected to WiFi. IP address: ");
@@ -155,7 +154,7 @@ void loop()
   Serial.print("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(1000);
+    delay(WIFI_RETRY_DELAY);
     Serial.print(".");
   }
 
