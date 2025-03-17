@@ -53,4 +53,9 @@ void httpRequestReadings(Reading reading)
   String payloadAsString;
   serializeJson(payload, payloadAsString);
   HttpResponse response = httpPOSTRequest(POST_READINGS_URL, payloadAsString);
+
+  if (response.httpResponseCode == -1)
+  {
+    throw StationAPI_ConnectionError();
+  }
 }
