@@ -128,7 +128,7 @@ void setup()
   // sleep before scheduled wake up
   uint32_t timeToSleep = 0;
 
-  if (getScheduleStart() > 0 && calcTimeDelta(getCurrentUnixTimeInSeconds(), getScheduleStart()) > 0)
+  if (getScheduleStart() != 0 && calcTimeDelta(getCurrentUnixTimeInSeconds(), getScheduleStart()) > 0)
   {
     timeToSleep = calcTimeDelta(getCurrentUnixTimeInSeconds(), getScheduleStart());
     Serial.print("Will sleep for: ");
@@ -140,7 +140,7 @@ void setup()
     esp_deep_sleep_start();
   }
 
-  if (getScheduleEnd() < getCurrentUnixTimeInSeconds())
+  if (getScheduleEnd() != 0 && getScheduleEnd() < getCurrentUnixTimeInSeconds())
   {
     Serial.print("Schedule end. Powering down.");
     esp_deep_sleep_start();
