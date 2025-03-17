@@ -21,14 +21,14 @@ void initLightSensor()
     }
     veml.setGain(VEML7700_GAIN_1_8);
     veml.setIntegrationTime(VEML7700_IT_800MS);
-    Serial.println("VEML7700 sensor initialised");
+    Serial.println("VEML7700 sensor initialised.");
 }
 
 void initTempSensor()
 {
     // DS18B20 3 pin temperature sensor
     sensors.begin();
-    Serial.println("DS18B20 sensor initialised");
+    Serial.println("DS18B20 sensor initialised.");
 }
 
 SensorData pollSensors(Unit unit)

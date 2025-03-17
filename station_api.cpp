@@ -20,7 +20,7 @@ HandshakeConfig httpRequestHandshake(const char *name)
     throw StationAPI_ConnectionError();
   }
 
-  Serial.println("Received config from station");
+  Serial.println("Received config from station.");
   Serial.println(response.json);
 
   // Parse JSON response
@@ -34,7 +34,7 @@ HandshakeConfig httpRequestHandshake(const char *name)
   return {
       jsonResponse["beacon_id"],
       jsonResponse["rtc_calibration"],
-      jsonResponse["poll_interval"],
+      jsonResponse["poll_interval_seconds"],
       jsonResponse["schedule_start"],
       jsonResponse["schedule_end"],
       jsonResponse["unit"],

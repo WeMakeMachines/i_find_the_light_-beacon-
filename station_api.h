@@ -28,10 +28,10 @@ public:
 struct HandshakeConfig
 {
   int beacon_id;
-  uint64_t rtc_calibration;
-  int poll_interval;
-  uint64_t schedule_start;
-  uint64_t schedule_end;
+  uint32_t rtc_calibration;
+  int poll_interval_seconds;
+  uint32_t schedule_start;
+  uint32_t schedule_end;
   Unit unit;
 };
 
@@ -40,7 +40,7 @@ struct Reading
   int beacon_id;
   float lux;
   float temperature;
-  uint64_t timestamp;
+  uint32_t timestamp;
   Unit unit;
 };
 

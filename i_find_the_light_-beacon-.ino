@@ -20,6 +20,9 @@ const char *name = "0001"; // Must be unique for each beacon
 // DS1307 RTC
 RTC_DS1307 rtc;
 
+int retryDelay = 5000;
+int retryCount = 0;
+
 bool isFirstBoot()
 {
   esp_reset_reason_t resetReason = esp_reset_reason();
@@ -27,10 +30,19 @@ bool isFirstBoot()
   return (resetReason == ESP_RST_POWERON);
 }
 
-uint64_t getTimestampInMilliseconds()
+uint32_t getCurrentUnixTimeInSeconds()
 {
   DateTime now = rtc.now();
-  return static_cast<uint64_t>(now.unixtime()) * 1000ULL;
+  return now.unixtime();
+}
+
+uint32_t calcTimeDelta(uint32_t time_in, uint32_t time_out)
+{
+  if (time_out < time_in)
+  {
+    return 0;
+  }
+  return time_out - time_in;
 }
 
 void attemptHandshake()
@@ -41,22 +53,34 @@ void attemptHandshake()
     HandshakeConfig config = httpRequestHandshake(name);
 
     setRtcDataAttr({config.beacon_id,
-                    config.poll_interval,
+                    config.poll_interval_seconds,
                     config.schedule_start,
                     config.schedule_end,
                     config.unit});
 
     // adjust RTC with calibration timestamp from station
-    uint32_t timestamp_seconds = static_cast<uint32_t>(config.rtc_calibration / 1000);
+    uint32_t timestamp_seconds = config.rtc_calibration;
     DateTime dt(timestamp_seconds);
     rtc.adjust(dt);
   }
   catch (const StationAPI_ConnectionError &e)
   {
-    Serial.println(e.what());
-    Serial.println("Will try again in 5s...");
     // wait before attempting handshake again
-    delay(5000);
+    Serial.println(e.what());
+    Serial.print("Will try again in ");
+    Serial.print(retryDelay / 1000);
+    Serial.println("s...");
+    // don't increase retryCount forever
+    if (retryCount < 11)
+    {
+      retryCount += 1;
+    }
+    // after some attemps, increase delay
+    if (retryCount > 10)
+    {
+      retryDelay = 60000;
+    }
+    delay(retryDelay);
     attemptHandshake();
   }
 }
@@ -101,6 +125,27 @@ void setup()
 
   initLightSensor();
   initTempSensor();
+
+  // sleep before scheduled wake up
+  uint32_t timeToSleep = 0;
+
+  if (getScheduleStart() > 0 && calcTimeDelta(getCurrentUnixTimeInSeconds(), getScheduleStart()) > 0)
+  {
+    timeToSleep = calcTimeDelta(getCurrentUnixTimeInSeconds(), getScheduleStart());
+    Serial.print("Will sleep for: ");
+    Serial.print(timeToSleep);
+    Serial.println(" seconds.");
+
+    esp_sleep_enable_timer_wakeup(timeToSleep * uS_TO_S_FACTOR);
+    esp_wifi_stop();
+    esp_deep_sleep_start();
+  }
+
+  if (getScheduleEnd() < getCurrentUnixTimeInSeconds())
+  {
+    Serial.print("Schedule end. Powering down.");
+    esp_deep_sleep_start();
+  }
 }
 
 void loop()
@@ -122,10 +167,11 @@ void loop()
       beacon_id : getBeaconId(),
       lux : data.lux,
       temperature : data.temperature,
-      timestamp : getTimestampInMilliseconds(),
+      timestamp : getCurrentUnixTimeInSeconds(),
       unit : getUnit()
     });
 
+    Serial.println("Data transmitted!");
     Serial.print("Lux: ");
     Serial.println(data.lux);
     Serial.print("Temperature: ");
@@ -145,7 +191,10 @@ void loop()
     Serial.println(e.what());
   }
 
-  esp_sleep_enable_timer_wakeup(getPollInterval() * uS_TO_S_FACTOR);
+  Serial.print("Sleeping for ");
+  Serial.print(getPollIntervalSeconds());
+  Serial.println(" seconds.");
+  esp_sleep_enable_timer_wakeup(getPollIntervalSeconds() * uS_TO_S_FACTOR);
   esp_wifi_stop();
   esp_deep_sleep_start();
 }

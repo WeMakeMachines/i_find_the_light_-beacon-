@@ -11,9 +11,9 @@ const int UNSET_BEACON_ID = -1;
 struct RTCData
 {
     int beacon_id;
-    int poll_interval;
-    uint64_t schedule_start;
-    uint64_t schedule_end;
+    int poll_interval_seconds;
+    uint32_t schedule_start;
+    uint32_t schedule_end;
     Unit unit;
 };
 
@@ -25,11 +25,11 @@ void setRtcDataAttr(RTCData new_rtc_values);
 
 int getBeaconId();
 
-int getPollInterval();
+int getPollIntervalSeconds();
 
-uint64_t getScheduleStart();
+uint32_t getScheduleStart();
 
-uint64_t getScheduleEnd();
+uint32_t getScheduleEnd();
 
 Unit getUnit();
 

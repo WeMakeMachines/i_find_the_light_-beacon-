@@ -1,4 +1,4 @@
-#include "esp32_rtc.h"
+  #include "esp32_rtc.h"
 
 RTC_DATA_ATTR RTCData rtc_data;
 
@@ -17,17 +17,17 @@ int getBeaconId()
     return rtc_data.beacon_id;
 }
 
-int getPollInterval()
+int getPollIntervalSeconds()
 {
-    return rtc_data.poll_interval;
+    return rtc_data.poll_interval_seconds;
 }
 
-uint64_t getScheduleStart()
+uint32_t getScheduleStart()
 {
     return rtc_data.schedule_start;
 }
 
-uint64_t getScheduleEnd()
+uint32_t getScheduleEnd()
 {
     return rtc_data.schedule_end;
 }
