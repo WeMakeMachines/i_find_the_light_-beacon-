@@ -14,7 +14,7 @@ HandshakeConfig httpRequestHandshake(const char *name)
   serializeJson(jsonPayload, payloadAsString);
   String response = httpPOSTRequest(POST_HANDSHAKE_URL, payloadAsString);
 
-  Serial.println("Handshake with station complete");
+  Serial.println("Received config from station");
   Serial.println(response);
 
   // Parse JSON response

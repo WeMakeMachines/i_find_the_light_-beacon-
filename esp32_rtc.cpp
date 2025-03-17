@@ -1,15 +1,15 @@
 #include "esp32_rtc.h"
 
-RTC_DATA_ATTR RTCData rtc_data = {-1, -1, 0, 0};
+RTC_DATA_ATTR RTCData rtc_data;
+
+void unsetRtcDataAttr()
+{
+    rtc_data = {UNSET_BEACON_ID, 0, 0, 0};
+}
 
 void setRtcDataAttr(RTCData new_rtc_values)
 {
     rtc_data = new_rtc_values;
-}
-
-RTCData readRtcDataAtt()
-{
-    return rtc_data;
 }
 
 int getBeaconId()

@@ -5,6 +5,8 @@
 #include "unit.h"
 #include <cstdint>
 
+const int UNSET_BEACON_ID = -1;
+
 // define RTCData used for handshake config
 struct RTCData
 {
@@ -16,6 +18,8 @@ struct RTCData
 };
 
 extern RTC_DATA_ATTR RTCData rtc_data;
+
+void unsetRtcDataAttr();
 
 void setRtcDataAttr(RTCData new_rtc_values);
 

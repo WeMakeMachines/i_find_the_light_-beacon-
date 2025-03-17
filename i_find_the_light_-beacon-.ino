@@ -1,3 +1,5 @@
+#include "i_find_the_light-beacon-.h"
+
 #include "unit.h"
 #include "esp32_rtc.h"
 #include "sensors.h"
@@ -6,6 +8,7 @@
 
 #include <Wire.h>
 #include <WiFi.h>
+#include <esp_system.h>
 #include <esp_wifi.h>
 
 #include <RTClib.h>
@@ -16,6 +19,13 @@ const char *name = "0001"; // Must be unique for each beacon
 // DS1307 RTC
 RTC_DS1307 rtc;
 
+bool isFirstBoot()
+{
+  esp_reset_reason_t resetReason = esp_reset_reason();
+
+  return (resetReason == ESP_RST_POWERON);
+}
+
 uint64_t getTimestampInMilliseconds()
 {
   DateTime now = rtc.now();
@@ -25,6 +35,11 @@ uint64_t getTimestampInMilliseconds()
 void setup()
 {
   Serial.begin(115200);
+  if (isFirstBoot())
+  {
+    Serial.println("First time?!");
+    unsetRtcDataAttr();
+  }
   // Wire.begin(SDA, SCL)
   Wire.begin(32, 25);
   // Connect to Wi-Fi
@@ -38,16 +53,8 @@ void setup()
   Serial.print("Connected to WiFi. IP address: ");
   Serial.println(WiFi.localIP());
 
-  HandshakeConfig config = httpRequestHandshake(name);
-
-  setRtcDataAttr({config.beacon_id,
-                  config.poll_interval,
-                  config.schedule_start,
-                  config.schedule_end,
-                  config.unit});
-
-  initLightSensor();
-  initTempSensor();
+  Serial.print("Beacon ID: ");
+  Serial.println(getBeaconId());
 
   if (!rtc.begin())
   {
@@ -56,10 +63,30 @@ void setup()
       ;
   }
 
-  // adjust RTC with calibration timestamp from station
-  uint32_t timestamp_seconds = static_cast<uint32_t>(config.rtc_calibration / 1000);
-  DateTime dt(timestamp_seconds);
-  rtc.adjust(dt);
+  // check if config has already been set
+  if (getBeaconId() == UNSET_BEACON_ID)
+  {
+    Serial.println("Beacon ID not set. Handshaking with station...");
+
+    HandshakeConfig config = httpRequestHandshake(name);
+
+    setRtcDataAttr({config.beacon_id,
+                    config.poll_interval,
+                    config.schedule_start,
+                    config.schedule_end,
+                    config.unit});
+
+    Serial.print("Beacon ID after config: ");
+    Serial.println(getBeaconId());
+
+    // adjust RTC with calibration timestamp from station
+    uint32_t timestamp_seconds = static_cast<uint32_t>(config.rtc_calibration / 1000);
+    DateTime dt(timestamp_seconds);
+    rtc.adjust(dt);
+  }
+
+  initLightSensor();
+  initTempSensor();
 }
 
 void loop()
@@ -83,14 +110,20 @@ void loop()
     unit : getUnit()
   });
 
-  // Optionally, log data to the serial monitor for debugging
-  Serial.print("Ambient Light: ");
-  Serial.print(data.lux);
-  Serial.print(" lux, Temperature: ");
+  Serial.print("Lux: ");
+  Serial.println(data.lux);
+  Serial.print("Temperature: ");
   Serial.print(data.temperature);
-  Serial.println(" °C");
+  if (getUnit() == Unit::Metric)
+  {
+    Serial.println(" °C");
+  }
+  else
+  {
+    Serial.println(" °F");
+  }
 
-  esp_sleep_enable_timer_wakeup(getPollInterval() * 1000000);
+  esp_sleep_enable_timer_wakeup(getPollInterval() * uS_TO_S_FACTOR);
   esp_wifi_stop();
-  esp_light_sleep_start();
+  esp_deep_sleep_start();
 }
