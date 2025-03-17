@@ -1,3 +1,7 @@
+/*
+COPY AND MODIFY THE CONTENTS OF THIS FILE INTO wifi_config.h
+*/
+
 #ifndef WIFI_CONFIG_H
 #define WIFI_CONFIG_H
 
