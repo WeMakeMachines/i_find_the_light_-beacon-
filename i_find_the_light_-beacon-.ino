@@ -1,6 +1,6 @@
 #include "unit.h"
-#include "i_find_the_light-beacon-.h"
 #include "esp32_rtc.h"
+#include "sensors.h"
 #include "station_api.h"
 #include "wifi_config.h" // Make sure this has been configured!
 
@@ -8,22 +8,13 @@
 #include <WiFi.h>
 #include <esp_wifi.h>
 
-#include <Adafruit_VEML7700.h>
-#include <DallasTemperature.h>
-#include <OneWire.h>
 #include <RTClib.h>
 
-// unique device reference
-const char *name = "0001";
+// this device unique reference
+const char *name = "0001"; // Must be unique for each beacon
 
 // DS1307 RTC
 RTC_DS1307 rtc;
-
-// DS18B20 3 pin temperature sensor
-const int oneWireBus = 4; // GPIO pin for DS18B20 data line
-OneWire oneWire(oneWireBus);
-Adafruit_VEML7700 veml = Adafruit_VEML7700();
-DallasTemperature sensors(&oneWire);
 
 uint64_t getTimestampInMilliseconds()
 {
@@ -31,28 +22,11 @@ uint64_t getTimestampInMilliseconds()
   return static_cast<uint64_t>(now.unixtime()) * 1000ULL;
 }
 
-SensorData pollSensors(Unit unit)
-{
-  int DS18B20_index = 0;
-  float temperature;
-  float lux = veml.readLux();
-  sensors.requestTemperatures();
-
-  switch (unit)
-  {
-  case Unit::Imperial:
-    temperature = sensors.getTempFByIndex(DS18B20_index);
-    break;
-  default:
-    temperature = sensors.getTempCByIndex(DS18B20_index);
-  }
-
-  return {temperature, lux};
-}
-
 void setup()
 {
   Serial.begin(115200);
+  // Wire.begin(SDA, SCL)
+  Wire.begin(32, 25);
   // Connect to Wi-Fi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to WiFi...");
@@ -72,17 +46,8 @@ void setup()
                   config.schedule_end,
                   config.unit});
 
-  // Initialise I2C for VEML7700 and DS1307
-  Wire.begin(32, 25);
-  if (!veml.begin())
-  {
-    Serial.println("Failed to initialise VEML7700 sensor!");
-    while (1)
-      ;
-  }
-  veml.setGain(VEML7700_GAIN_1_8);
-  veml.setIntegrationTime(VEML7700_IT_800MS);
-  Serial.println("VEML7700 sensor initialised.");
+  initLightSensor();
+  initTempSensor();
 
   if (!rtc.begin())
   {
@@ -95,10 +60,6 @@ void setup()
   uint32_t timestamp_seconds = static_cast<uint32_t>(config.rtc_calibration / 1000);
   DateTime dt(timestamp_seconds);
   rtc.adjust(dt);
-
-  // Initialise DS18B20 sensor
-  sensors.begin();
-  Serial.println("DS18B20 sensor initialised.");
 }
 
 void loop()
@@ -129,7 +90,7 @@ void loop()
   Serial.print(data.temperature);
   Serial.println(" °C");
 
-  esp_sleep_enable_timer_wakeup(getPollInterval() * 1000000); // light sleep for 2 seconds
+  esp_sleep_enable_timer_wakeup(getPollInterval() * 1000000);
   esp_wifi_stop();
   esp_light_sleep_start();
 }
