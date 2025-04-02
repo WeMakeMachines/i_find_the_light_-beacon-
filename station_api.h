@@ -1,8 +1,8 @@
 #ifndef STATION_API_H
 #define STATION_API_H
 
-#define POST_HANDSHAKE_URL "http://192.168.50.1:3111/handshake"
-#define POST_READINGS_URL "http://192.168.50.1:3111/readings"
+#define POST_HANDSHAKE_URL "http://192.168.50.1:3111/beacon/handshake"
+#define POST_READINGS_URL "http://192.168.50.1:3111/beacon/readings"
 
 #include "unit.h"
 #include <cstdint>
