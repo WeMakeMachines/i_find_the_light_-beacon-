@@ -20,7 +20,7 @@ void initLightSensor()
             ;
     }
     veml.setGain(VEML7700_GAIN_1_8);
-    veml.setIntegrationTime(VEML7700_IT_800MS);
+    veml.setIntegrationTime(VEML7700_IT_25MS);
     Serial.println("VEML7700 sensor initialised.");
 }
 
